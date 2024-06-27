@@ -1,0 +1,74 @@
+#include <WiFiNINA.h>
+
+char ssid[] = "YourWiFiSSID";
+char pass[] = "YourWiFiPassword";
+int keyIndex = 0;
+int status = WL_IDLE_STATUS;
+
+WiFiServer server(80);
+
+int greenLight = 0;
+int yellowLight = 1;
+int redLight   = 2;
+int maximumMoistureLevel;
+int currentMoistureLevel;
+
+// Define crop conditions
+const char* cropName = "wheat";
+const float minMoisturePercentage = 14.0;
+const float maxMoisturePercentage = 20.0;
+const float minPh = 6.5;
+const float maxPh = 6.5;
+const char* soilType = "clay/loamy";
+const float minTemperature = 20.0;
+const float maxTemperature = 25.0;
+
+void setup() {
+  for (int i = 0; i < 4; i++) {
+    pinMode(i, OUTPUT);
+  }
+  pinMode(A0, INPUT);
+  maximumMoistureLevel = analogRead(A0);
+
+  Serial.begin(9600);
+
+  while (status != WL_CONNECTED) {
+    status = WiFi.begin(ssid, pass);
+    delay(10000);
+  }
+
+  server.begin();
+}
+
+void loop() {
+  WiFiClient client = server.available();
+
+  if (client) {
+    currentMoistureLevel = analogRead(A0);
+    moistureDetection();
+    client.println(currentMoistureLevel);
+    client.stop();
+  }
+}
+
+void moistureDetection() {
+  float moisturePercentage = (float)currentMoistureLevel / maximumMoistureLevel * 100;
+
+  if (strcmp(cropName, "wheat") == 0 && 
+      moisturePercentage >= minMoisturePercentage && moisturePercentage <= maxMoisturePercentage &&
+      minPh <= 6.5 && maxPh >= 6.5 &&
+      strcmp(soilType, "clay/loamy") == 0 &&
+      minTemperature <= 25.0 && maxTemperature >= 20.0) {
+    
+    // Conditions for wheat crop are met
+    digitalWrite(greenLight, HIGH);
+    digitalWrite(yellowLight, LOW);
+    digitalWrite(redLight, LOW);
+    
+  } else {
+    // Conditions for wheat crop are not met
+    digitalWrite(greenLight, LOW);
+    digitalWrite(yellowLight, LOW);
+    digitalWrite(redLight, HIGH);
+  }
+}
